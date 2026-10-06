@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Examen — IA générative · Séance 1</title>
+<style>
+  :root { --bleu:#1f4fd8; --vert:#1a9b53; --rouge:#d33; --gris:#f3f4f7; --texte:#1c1f26; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,Arial,sans-serif; background:var(--gris); color:var(--texte); }
+  .page { max-width:720px; margin:0 auto; padding:16px; }
+  .carte { background:#fff; border-radius:14px; padding:20px; box-shadow:0 2px 10px rgba(0,0,0,.07); margin-bottom:14px; }
+  h1 { font-size:1.4rem; margin:0 0 6px; }
+  h2 { font-size:1.1rem; margin:0 0 10px; }
+  .sous { color:#5b6270; margin:0 0 14px; }
+  .infos { display:flex; gap:10px; flex-wrap:wrap; margin:14px 0; }
+  .info { flex:1; min-width:120px; background:var(--gris); border-radius:10px; padding:10px; text-align:center; }
+  .info b { display:block; font-size:1.2rem; color:var(--bleu); }
+  label { display:block; margin:10px 0 4px; font-weight:600; }
+  input[type=text] { width:100%; padding:11px; font-size:1rem; border:1px solid #c9cdd6; border-radius:8px; }
+  button { font-size:1rem; padding:12px 18px; border:0; border-radius:10px; cursor:pointer; background:var(--bleu); color:#fff; font-weight:600; }
+  button.sec { background:#e3e6ee; color:var(--texte); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  ul.regles { padding-left:20px; margin:8px 0; }
+  .barre { display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; background:#fff; padding:12px 16px; box-shadow:0 2px 8px rgba(0,0,0,.08); z-index:5; }
+  #chrono { font-weight:700; font-size:1.2rem; color:var(--bleu); font-variant-numeric:tabular-nums; }
+  #chrono.urgent { color:var(--rouge); }
+  .choix { display:block; border:2px solid #d8dce5; border-radius:10px; padding:12px; margin:8px 0; cursor:pointer; font-weight:500; }
+  .choix:hover { border-color:var(--bleu); }
+  .choix input { margin-right:8px; }
+  .choix.coche { border-color:var(--bleu); background:#eef2ff; }
+  .nav-q { display:flex; flex-wrap:wrap; gap:8px; }
+  .nav-q button { width:42px; height:42px; padding:0; background:#e3e6ee; color:var(--texte); }
+  .nav-q button.repondu { background:var(--vert); color:#fff; }
+  .nav-q button.actuel { outline:3px solid var(--bleu); }
+  .actions { display:flex; justify-content:space-between; gap:10px; margin-top:14px; }
+  .note { font-size:2.4rem; font-weight:800; color:var(--bleu); text-align:center; margin:6px 0; }
+  .bon { border-left:5px solid var(--vert); }
+  .faux { border-left:5px solid var(--rouge); }
+  .correction p { margin:4px 0; }
+  .masque { display:none !important; }
+  .voile { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; padding:16px; z-index:10; }
+  .voile .carte { max-width:420px; text-align:center; }
+  @media print { .barre, button, .nav-q { display:none !important; } body { background:#fff; } }
+</style>
+</head>
+<body>
+
+<!-- ÉCRAN 1 : accueil + identification -->
+<div id="accueil" class="page">
+  <div class="carte">
+    <h1>Évaluation — Séance 1</h1>
+    <p class="sous">IA et Codage informatique · Informatique de gestion<br>Comprendre l'IA générative et ses outils</p>
+    <div class="infos">
+      <div class="info"><b>10</b>questions</div>
+      <div class="info"><b>15 min</b>chronomètre</div>
+      <div class="info"><b>/ 20</b>2 points par réponse</div>
+    </div>
+  </div>
+  <div class="carte">
+    <h2>Règlement de l'examen</h2>
+    <ul class="regles">
+      <li>Une seule réponse correcte par question.</li>
+      <li>Le chronomètre ne peut pas être arrêté.</li>
+      <li>Quitter la page est signalé et compté.</li>
+      <li>Vous pouvez revenir sur une question tant que la copie n'est pas remise.</li>
+    </ul>
+  </div>
+  <div class="carte">
+    <h2>Identification</h2>
+    <label for="nom">Nom *</label><input type="text" id="nom" autocomplete="off">
+    <label for="prenom">Prénom *</label><input type="text" id="prenom" autocomplete="off">
+    <label for="classe">Classe / groupe *</label><input type="text" id="classe" autocomplete="off">
+    <label style="font-weight:400;margin-top:14px"><input type="checkbox" id="accord"> J'ai lu le règlement et je m'engage à le respecter.</label>
+    <div class="actions"><button id="btnDebut" disabled>Commencer l'examen</button></div>
+  </div>
+</div>
+
+<!-- ÉCRAN 2 : examen -->
+<div id="examen" class="masque">
+  <div class="barre">
+    <span id="progression">0 / 10</span>
+    <span id="chrono">15:00</span>
+  </div>
+  <div class="page">
+    <div class="carte">
+      <h2 id="enonce"></h2>
+      <div id="choix"></div>
+      <div class="actions">
+        <button class="sec" id="btnPrec">← Précédente</button>
+        <button id="btnSuiv">Suivante →</button>
+      </div>
+    </div>
+    <div class="carte">
+      <h2>Navigation entre les questions</h2>
+      <p class="sous">En vert : question répondue.</p>
+      <div class="nav-q" id="navQ"></div>
+    </div>
+    <div class="actions"><span></span><button id="btnRemise" style="background:var(--vert)">Remettre ma copie</button></div>
+  </div>
+</div>
+
+<!-- ÉCRAN 3 : résultat -->
+<div id="resultat" class="page masque">
+  <div class="carte">
+    <h1>Copie remise</h1>
+    <p class="sous" id="qui"></p>
+    <p class="sous" id="statut" style="text-align:center"></p>
+    <div class="note masque" id="noteBloc"><span id="noteVal">0</span> / 20</div>
+    <p class="sous" id="infoSorties" style="text-align:center"></p>
+    <div class="actions" style="justify-content:center">
+      <button id="btnRetry" class="masque">Réessayer l'envoi</button>
+      <button id="btnPdf" class="sec">Imprimer / enregistrer en PDF</button>
+    </div>
+  </div>
+  <div class="carte correction masque" id="correction"><h2>Correction</h2></div>
+</div>
+
+<!-- Fenêtres modales -->
+<div id="modalSortie" class="voile masque">
+  <div class="carte">
+    <h2>⚠️ Sortie détectée</h2>
+    <p>Vous avez quitté la page de l'examen. Cet événement est enregistré.</p>
+    <button id="btnRetour">Revenir à l'examen</button>
+  </div>
+</div>
+<div id="modalRemise" class="voile masque">
+  <div class="carte">
+    <h2>📝 Remettre votre copie ?</h2>
+    <p id="msgRemise"></p>
+    <div class="actions" style="justify-content:center">
+      <button class="sec" id="btnContinuer">Continuer l'examen</button>
+      <button id="btnConfirmer">Remettre</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========= 1. QUESTIONS =========
+   Pour modifier l'examen : change le texte et les choix ici.
+   Les bonnes réponses ne sont PAS dans cette page : elles sont dans Code.gs (côté serveur). */
+const QUESTIONS = [
+  { q:"Que fait une IA générative ?",
+    choix:["Elle classe uniquement des données existantes","Elle crée du contenu nouveau (texte, image, code…)","Elle répare le matériel informatique","Elle remplace le système d'exploitation"] },
+  { q:"Que signifie LLM ?",
+    choix:["Large Language Model","Local Logic Machine","Linear Learning Method","Light Language Module"] },
+  { q:"Qu'est-ce qu'un « prompt » ?",
+    choix:["Un virus informatique","Un type de processeur","L'instruction ou la question donnée à l'IA","Un format de fichier"] },
+  { q:"Qu'appelle-t-on une « hallucination » de l'IA ?",
+    choix:["Une panne du serveur","Une réponse fausse présentée avec assurance","Une image de mauvaise qualité","Un message d'erreur de connexion"] },
+  { q:"Lequel de ces outils est un assistant d'IA générative ?",
+    choix:["Un pare-feu","Le BIOS","Une imprimante","Claude ou ChatGPT"] },
+  { q:"Comment obtenir une meilleure réponse d'une IA ?",
+    choix:["Écrire un prompt clair, précis, avec du contexte","Écrire le plus court possible","Répéter la même phrase plusieurs fois","Écrire uniquement en majuscules"] },
+  { q:"Que faut-il faire avec une information importante donnée par l'IA ?",
+    choix:["La croire sans vérifier","La vérifier avec des sources fiables","La supprimer immédiatement","La traduire en anglais"] },
+  { q:"Que ne faut-il PAS écrire dans un prompt ?",
+    choix:["Une question de cours","Un exemple de code","Un mot de passe ou des données personnelles sensibles","Un résumé de texte public"] },
+  { q:"Comment l'IA peut-elle aider un programmeur ?",
+    choix:["Elle remplace complètement le besoin d'apprendre","Elle ne sait rien faire en code","Elle ne fonctionne que hors connexion","Elle peut générer, expliquer et aider à corriger du code"] },
+  { q:"Sur quoi un modèle de langage est-il entraîné ?",
+    choix:["Sur de très grandes quantités de textes et de données","Sur une seule page web","Sur les contacts du téléphone de l'utilisateur","Sur aucune donnée"] }
+];
+
+/* ========= 2. ÉTAT ========= */
+const DUREE = 15 * 60;            // secondes
+const URL_SERVEUR = "";           // colle ici l'URL du déploiement Apps Script (se termine par /exec)
+let reponses = new Array(QUESTIONS.length).fill(null);
+let courante = 0, reste = DUREE, minuteur = null, enCours = false, sorties = 0;
+const $ = id => document.getElementById(id);
+
+/* ========= 3. ACCUEIL ========= */
+function verifierFormulaire() {
+  const ok = $("nom").value.trim() && $("prenom").value.trim() && $("classe").value.trim() && $("accord").checked;
+  $("btnDebut").disabled = !ok;
+}
+["nom","prenom","classe","accord"].forEach(id => $(id).addEventListener("input", verifierFormulaire));
+
+$("btnDebut").addEventListener("click", () => {
+  $("accueil").classList.add("masque");
+  $("examen").classList.remove("masque");
+  enCours = true;
+  afficherQuestion();
+  minuteur = setInterval(tic, 1000);
+});
+
+/* ========= 4. CHRONOMÈTRE ========= */
+function tic() {
+  reste--;
+  const m = String(Math.floor(reste / 60)).padStart(2, "0");
+  const s = String(reste % 60).padStart(2, "0");
+  $("chrono").textContent = m + ":" + s;
+  $("chrono").classList.toggle("urgent", reste <= 60);
+  if (reste <= 0) remettre();     // temps écoulé : remise automatique
+}
+
+/* ========= 5. AFFICHAGE DES QUESTIONS ========= */
+function afficherQuestion() {
+  const Q = QUESTIONS[courante];
+  $("enonce").textContent = (courante + 1) + ". " + Q.q;
+  $("choix").innerHTML = "";
+  Q.choix.forEach((texte, i) => {
+    const lab = document.createElement("label");
+    lab.className = "choix" + (reponses[courante] === i ? " coche" : "");
+    const radio = document.createElement("input");
+    radio.type = "radio"; radio.name = "reponse"; radio.checked = reponses[courante] === i;
+    radio.addEventListener("change", () => { reponses[courante] = i; afficherQuestion(); });
+    lab.appendChild(radio);
+    lab.appendChild(document.createTextNode(texte));
+    $("choix").appendChild(lab);
+  });
+  $("btnPrec").disabled = courante === 0;
+  $("btnSuiv").disabled = courante === QUESTIONS.length - 1;
+  majNavigation();
+}
+
+function majNavigation() {
+  const nav = $("navQ");
+  nav.innerHTML = "";
+  QUESTIONS.forEach((_, i) => {
+    const b = document.createElement("button");
+    b.textContent = i + 1;
+    if (reponses[i] !== null) b.classList.add("repondu");
+    if (i === courante) b.classList.add("actuel");
+    b.addEventListener("click", () => { courante = i; afficherQuestion(); });
+    nav.appendChild(b);
+  });
+  const nb = reponses.filter(r => r !== null).length;
+  $("progression").textContent = nb + " / " + QUESTIONS.length;
+}
+
+$("btnPrec").addEventListener("click", () => { if (courante > 0) { courante--; afficherQuestion(); } });
+$("btnSuiv").addEventListener("click", () => { if (courante < QUESTIONS.length - 1) { courante++; afficherQuestion(); } });
+
+/* ========= 6. DÉTECTION DE SORTIE DE LA PAGE ========= */
+function sortieDetectee() {
+  if (!enCours) return;
+  sorties++;
+  $("modalSortie").classList.remove("masque");
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) sortieDetectee(); });
+$("btnRetour").addEventListener("click", () => $("modalSortie").classList.add("masque"));
+
+/* ========= 7. REMISE ========= */
+$("btnRemise").addEventListener("click", () => {
+  const sans = reponses.filter(r => r === null).length;
+  $("msgRemise").textContent = sans > 0
+    ? "Il vous reste " + sans + " question(s) sans réponse. Une fois remise, la copie ne peut plus être modifiée."
+    : "Toutes les questions ont une réponse. Une fois remise, la copie ne peut plus être modifiée.";
+  $("modalRemise").classList.remove("masque");
+});
+$("btnContinuer").addEventListener("click", () => $("modalRemise").classList.add("masque"));
+$("btnConfirmer").addEventListener("click", remettre);
+
+let soumission = null;
+
+function remettre() {
+  if (!enCours) return;
+  enCours = false;
+  clearInterval(minuteur);
+  $("modalRemise").classList.add("masque");
+  $("modalSortie").classList.add("masque");
+  $("examen").classList.add("masque");
+  $("resultat").classList.remove("masque");
+
+  $("qui").textContent = $("prenom").value.trim() + " " + $("nom").value.trim() + " · " + $("classe").value.trim();
+  $("infoSorties").textContent = "Sorties de la page détectées : " + sorties;
+
+  soumission = {
+    nom: $("nom").value.trim(), prenom: $("prenom").value.trim(), classe: $("classe").value.trim(),
+    reponses: reponses, sorties: sorties, duree: DUREE - reste
+  };
+  envoyer();
+}
+
+/* Envoie la copie au serveur, qui corrige, enregistre et renvoie la note */
+function envoyer() {
+  $("statut").textContent = "Envoi de la copie en cours…";
+  $("btnRetry").classList.add("masque");
+  if (!URL_SERVEUR) { echec("Serveur non configuré : colle l'URL Apps Script dans URL_SERVEUR."); return; }
+  fetch(URL_SERVEUR, { method: "POST", body: JSON.stringify(soumission) })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) afficherResultat(d);
+      else if (d.erreur === "deja_remise") echec("Une copie a déjà été remise avec ce nom, ce prénom et cette classe.", false);
+      else echec("Erreur du serveur. Réessayez.");
+    })
+    .catch(() => echec("Envoi impossible (connexion ?). Vos réponses sont gardées : réessayez."));
+}
+
+function echec(message, reessayer = true) {
+  $("statut").textContent = message;
+  $("btnRetry").classList.toggle("masque", !reessayer);
+}
+$("btnRetry").addEventListener("click", envoyer);
+
+function afficherResultat(d) {
+  $("statut").textContent = "Copie enregistrée ✔";
+  $("noteVal").textContent = d.note;
+  $("noteBloc").classList.remove("masque");
+  const zone = $("correction");
+  zone.classList.remove("masque");
+  QUESTIONS.forEach((Q, i) => {
+    const bonne = d.bonnes[i];
+    const juste = reponses[i] === bonne;
+    const bloc = document.createElement("div");
+    bloc.className = "carte " + (juste ? "bon" : "faux");
+    const t = document.createElement("p"); t.innerHTML = "<b></b>"; t.firstChild.textContent = (i + 1) + ". " + Q.q;
+    const v = document.createElement("p");
+    v.textContent = "Votre réponse : " + (reponses[i] === null ? "(aucune)" : Q.choix[reponses[i]]);
+    bloc.append(t, v);
+    if (!juste) {
+      const c = document.createElement("p"); c.textContent = "Bonne réponse : " + Q.choix[bonne];
+      bloc.append(c);
+    }
+    zone.appendChild(bloc);
+  });
+}
+
+$("btnPdf").addEventListener("click", () => window.print());
+
+/* Avertir avant de fermer ou recharger la page pendant l'examen */
+window.addEventListener("beforeunload", e => { if (enCours) { e.preventDefault(); e.returnValue = ""; } });
+</script>
+</body>
+</html>
